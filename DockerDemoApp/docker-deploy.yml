@@ -1,0 +1,49 @@
+﻿name: Build and Deploy ASP.NET Core Web App to ACR
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build the project
+        run: dotnet build --configuration Release
+
+      - name: Publish the project
+        run: dotnet publish --configuration Release --output ./publish
+
+      - name: Log in to Azure Container Registry
+        run: echo "${{ AZUREACR_SECRETID_AAB641D5F7E24A094562319415F146D }}" | docker login ${{ AZUREACR_LOGINSERVER_5593F1C9C2B94E899E75B2DC1327FF54 }} -u ${{ AZUREACR_CLIENTID_0A0B56D69DDC4AD6B08C8AB1D1D1F697 }} --password-stdin
+
+      - name: Build and tag the Docker image
+        run: docker build -t ${{ AZUREACR_LOGINSERVER_5593F1C9C2B94E899E75B2DC1327FF54 }}/myapp:${{ github.sha }} .
+
+      - name: Push the Docker image to ACR
+        run: docker push ${{ AZUREACR_LOGINSERVER_5593F1C9C2B94E899E75B2DC1327FF54 }}/myapp:${{ github.sha }}
+
+      - name: Azure CLI Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ AZUREACR_CLIENTID_0A0B56D69DDC4AD6B08C8AB1D1D1F697 }}
+          tenant-id: ${{ AZUREACR_TENANTID_5593F1C9C2B94E899E75B2DC1327FF54 }}
+          subscription-id: ${{ AZUREACR_SUBSCRIPTIONID_AAB641D5F7E24A0E9234509415F1462C }}
+          client-secret: ${{ AZUREACR_SECRETID_AAB641D5F7E24A094562319415F146D }}
+
+      # - name: Deploy to Azure Web App (Optional)
+      #   run: |
+      #     az webapp create --name <WebAppName> --resource-group my-apps-rg --plan <AppServicePlanName> --deployment-container-image-name ${{ secrets.ACR_LOGIN_SERVER }}/myapp:${{ github.sha }}
+      #     az webapp config container set --name <WebAppName> --resource-group my-apps-rg --docker-custom-image-name ${{ secrets.ACR_LOGIN_SERVER }}/myapp:${{ github.sha }}
+
+          
